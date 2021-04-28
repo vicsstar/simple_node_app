@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Specs Updater</title>
+
+    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.8.2/dist/alpine.min.js" defer></script>
+
+    <script>
+        const carDetail = (car) => `${car.year} ${car.make} ${car.model}`;
+
+        function fetchCars() {
+            return {
+                cars: [],
+                isEditMode: false,
+                message: '',
+                formData: {},
+                async loadCars() {
+                    const cars = await fetch('/cars').then(r => r.json());
+                    this.cars = cars;
+                },
+                async createCar($event) {
+                    $event.preventDefault();
+                    
+                    const newCar = await fetch('/cars', {
+                        method: 'post', body: JSON.stringify(this.formData),
+                        headers: {
+                            'content-type': 'application/json',
+                        }
+                    }).then(r => r.json());
+                    this.cars.push(newCar);
+                    this.formData = {};
+                    this.message = `Created, ${carDetail(newCar)}`;
+                },
+                async updateCar($event) {
+                    $event.preventDefault();
+
+                    const { _id, make, model, year } = this.formData;
+
+                    const carIndex = this.cars.findIndex(c => c._id === _id);
+
+                    if (carIndex !== -1) {
+
+                        const updatedCar = await fetch(`/cars/${_id}`, {
+                            method: 'put', body: JSON.stringify({
+                                make, model, year
+                            }),
+                            headers: {
+                                'content-type': 'application/json',
+                            }
+                        }).then(r => r.json());
+
+                        if (updatedCar['_id']) {
+                            this.cars.splice(carIndex, 1, this.formData);
+                            this.message = `Updated, ${carDetail(this.formData)}`;
+                            this.isEditMode = false;
+                            this.formData = {};
+                        }
+                    }
+                },
+                async deleteCar(car) {
+                    const response = await fetch(`/cars/${car._id}`, { method: 'delete' }).then(r => r.json());
+
+                    if (response.deletedCount === 1) {
+                        this.cars = this.cars.filter(c => c._id !== car._id);
+                    } else {
+                        alert(`Error deleting car: ${response}`);
+                    }
+                }
+            };
+        }
+    </script>
+</head>
+<body>
+
+    <div x-data="fetchCars()" x-init="$refs.make.focus(); loadCars()" class="w-full h-screen flex justify-center items-center">
+        <div class="relative flex flex-col w-2/5">
+            <template x-if="!!message">
+                <div class="absolute bg-gray-100 -top-10 right-auto py-1 px-5 rounded border inset-x-1/2 transform -translate-x-1/2">
+                    <div class="mr-4 text-indigo-500 text-center" x-text="message"></div>
+                    <button class="absolute text-sm text-gray-600 hover:text-blue-600 cursor-pointer focus:outline-none right-2 top-0"
+                            title="Close"
+                            @click="message = ''">x</button>
+                </div>
+            </template>
+            <h2 class="text-2xl text-center font-semibold mb-2">Car Database</h2>
+            <div class="flex justify-between">
+                <div class="mr-8 mt-3">
+                    <h3 class="text-md font-semibold mb-4" x-text="!isEditMode ? 'Create New Car' : 'Update Car'"></h3>
+                    <form action="" @submit="!isEditMode ? createCar($event) : updateCar($event)">
+                        <div class="flex flex-col mb-3">
+                            <label for="" class="uppercase text-xs font-semibold">Make</label>
+                            <input type="text" class="border rounded px-3 py-2" x-model="formData.make" x-ref="make"/>
+                        </div>
+                        <div class="flex flex-col mb-3">
+                            <label for="" class="uppercase text-xs font-semibold">Model</label>
+                            <input type="text" class="border rounded px-3 py-2" x-model="formData.model"/>
+                        </div>
+                        <div class="flex flex-col mb-4">
+                            <label for="" class="uppercase text-xs font-semibold">Year</label>
+                            <input type="number" class="border rounded px-3 py-2" min="1960" x-model.number="formData.year"/>
+                        </div>
+                        <div>
+                            <button type="submit" class="border rounded px-4 py-2 bg-purple-600 text-white">Save</button>
+                            <template x-if="isEditMode">
+                                <button type="button" class="border rounded px-4 py-2 text-gray-600" @click="isEditMode = false; formData = {}">Cancel</button>
+                            </template>
+                        </div>
+                    </form>
+                </div>
+                <div class="mt-3 w-full border rounded">
+                    <table class="w-full">
+                        <thead class="w-full">
+                            <tr class="flex w-full text-md text-left font-semibold border-b px-4">
+                                <th class="py-3 w-1/4">Make</th>
+                                <th class="py-3 w-1/4">Model</th>
+                                <th class="py-3 w-1/4">Year</th>
+                                <th class="w-1/4"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="block max-h-64 w-full overflow-y-scroll">
+                            <template x-for="(car, index) in cars" :key="car">
+                                <tr :class="`flex w-full p-2 ${index % 2 === 0 ? 'bg-gray-100' : ''}`">
+                                    <td class="px-2 w-1/4 text-gray-600" x-text="car.make"></td>
+                                    <td class="px-2 w-1/4 text-gray-600" x-text="car.model"></td>
+                                    <td class="px-2 w-1/4 text-gray-600" x-text="car.year"></td>
+                                    <td class="w-1/4">
+                                        <button class="bg-purple-600 text-sm text-white border px-2 rounded"
+                                                :title="`Edit, ${car.year} ${car.make} ${car.model}`"
+                                                @click="isEditMode = true; formData = {...car}">edit</button>
+                                        <button class="text-sm border px-2 rounded"
+                                                :title="`Delete, ${car.year} ${car.make} ${car.model}`"
+                                                @click="confirm(`Delete, ${car.year} ${car.make} ${car.model}.\n\nAre you sure?`) ? deleteCar(car) : null">x</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>

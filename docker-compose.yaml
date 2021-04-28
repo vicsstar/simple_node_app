@@ -1,0 +1,35 @@
+version: "3"
+services:
+
+    mongo:
+        image: mongo:latest
+        ports:
+            - 27017:27017
+        networks:
+            - mongo-network
+
+    mongo-express:
+        image: mongo-express:latest
+        environment:
+            - ME_CONFIG_MONGODB_SERVER=mongo
+        ports:
+            - 8081:8081
+        depends_on:
+            - mongo
+        networks:
+            - mongo-network
+    
+    simple_node_app:
+        image: simple_node_app:latest
+        environment:
+            - MONGO_HOST=mongo
+        ports:
+            - 3000:3000
+        depends_on:
+            - mongo
+        networks:
+            - mongo-network
+
+networks:
+    mongo-network:
+        driver: bridge

@@ -1,0 +1,6 @@
+Dockerfile
+mongo.yaml
+README.md
+.dockerignore
+.gitignore
+node_modules/
