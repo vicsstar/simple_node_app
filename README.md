@@ -30,6 +30,6 @@ docker compose up
 
 ## Stop app and related containers, in Docker
 ```bash
-docker compose doewn
+docker compose down
 ```
 
