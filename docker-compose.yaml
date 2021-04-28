@@ -2,11 +2,13 @@ version: "3"
 services:
 
     mongo:
-        image: mongo:latest
+        image: mvertes/alpine-mongo:latest
         ports:
             - 27017:27017
         networks:
             - mongo-network
+        volumes:
+            - mongo-dir:/data/db
 
     mongo-express:
         image: mongo-express:latest
@@ -33,3 +35,6 @@ services:
 networks:
     mongo-network:
         driver: bridge
+
+volumes:
+    mongo-dir:
